@@ -1,6 +1,6 @@
 "use strict";
 
-function acquireLock(client, lockString, lockTimeout, lockAcquired) {
+function acquireLock(client, lockString, lockTimeout, lockAcquired, lockWaiter) {
 	function retry() {
 		acquireLock(client, lockString, lockTimeout, lockAcquired);
 	}
@@ -30,13 +30,14 @@ function acquireLock(client, lockString, lockTimeout, lockAcquired) {
 					});
 				}
 			});
+			if (lockWaiter) lockWaiter()
 		} else {
 			lockAcquired(lockTimeoutValue);
 		}
 	});
 }
 
-module.exports = function(client, lockString, lockTimeout, lockedOperations) {
+module.exports = function(client, lockString, lockTimeout, lockedOperations, lockWaiter) {
 	if(!client) {
 		throw new Error("You must specify a client instance of http://github.com/mranney/node_redis");
 	}
@@ -56,5 +57,5 @@ module.exports = function(client, lockString, lockTimeout, lockedOperations) {
 		lockedOperations(function(allDone) {
 			if(lockTimeoutValue > Date.now()) client.del(lockString, allDone);
 		});
-	});
+	}, lockWaiter);
 };
